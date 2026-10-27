@@ -90,8 +90,8 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
     const height = tall ? 352 : settings.store.spotifyHeight;
 
     const btn: React.CSSProperties = {
-        background: "var(--background-modifier-hover)", color: "var(--text-normal)",
-        border: "none", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontSize: 12
+        background: "var(--button-secondary-background, #4e5058)", color: "var(--button-secondary-text, #fff)",
+        border: "none", borderRadius: 4, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontWeight: 500
     };
 
     const spotifyFrame = (
