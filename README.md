@@ -1,6 +1,6 @@
 # EmbedFixer (Vencord plugin)
 
-- **Link rewriting** (on send): TikTok → `tnktok.com`, Twitter/X → `fxtwitter.com`, Instagram → `ddinstagram.com`, Reddit → `rxddit.com`. Domains are configurable. Links in `<angle brackets>` and code blocks are left alone. Per-service toggles and a channel blacklist.
+- **Link rewriting** (on send): TikTok → `tnktok.com`, Twitter/X → `fxtwitter.com`, Instagram → `ddinstagram.com`, Reddit → `vxreddit.com`. Domains are configurable. Links in `<angle brackets>` and code blocks are left alone. Per-service toggles and a channel blacklist.
 - **Spotify player** under messages with Spotify links (track/album/playlist/episode):
   - Official Spotify embed (full track if you're logged into Spotify inside the client, otherwise 30s preview).
   - **Play full track (YouTube)** button: finds the matching YouTube video and plays it in an embedded player, no Spotify account needed. Needs the desktop app (Vesktop/Discord) — uses `native.ts`.

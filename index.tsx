@@ -12,6 +12,17 @@ import { React, useEffect, useState } from "@webpack/common";
 import { findSpotifyLinks, rewriteContent, RewriteOptions } from "./rewrite";
 import type { YoutubeMatch } from "./native";
 
+const STYLE_ID = "vc-embedfixer-style";
+
+function updateStyle() {
+    document.getElementById(STYLE_ID)?.remove();
+    if (!settings.store.hideNativeSpotifyEmbed) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = '[class*="embedSpotify"] { display: none !important; }';
+    document.head.appendChild(style);
+}
+
 const settings = definePluginSettings({
     tiktok: { type: OptionType.BOOLEAN, description: "Rewrite TikTok links", default: true },
     tiktokDomain: { type: OptionType.STRING, description: "TikTok replacement domain (e.g. tnktok.com, vxtiktok.com)", default: "tnktok.com" },
@@ -20,17 +31,18 @@ const settings = definePluginSettings({
     instagram: { type: OptionType.BOOLEAN, description: "Rewrite Instagram links", default: true },
     instagramDomain: { type: OptionType.STRING, description: "Instagram replacement domain (e.g. ddinstagram.com, kkinstagram.com)", default: "ddinstagram.com" },
     reddit: { type: OptionType.BOOLEAN, description: "Rewrite Reddit links", default: true },
-    redditDomain: { type: OptionType.STRING, description: "Reddit replacement domain (e.g. rxddit.com)", default: "rxddit.com" },
+    redditDomain: { type: OptionType.STRING, description: "Reddit replacement domain (e.g. vxreddit.com)", default: "vxreddit.com" },
     blacklistedChannels: { type: OptionType.STRING, description: "Channel IDs where links are NOT rewritten (comma separated)", default: "" },
     spotifyPlayer: { type: OptionType.BOOLEAN, description: "Show Spotify player under messages with Spotify links", default: true },
     spotifyDefault: {
         type: OptionType.SELECT,
         description: "Default Spotify player",
         options: [
-            { label: "Spotify (30s preview unless logged in)", value: "spotify", default: true },
-            { label: "YouTube (full track, no account)", value: "youtube" }
+            { label: "YouTube (full track, no account, seek + volume)", value: "youtube", default: true },
+            { label: "Spotify (30s preview unless logged in)", value: "spotify" }
         ]
     },
+    hideNativeSpotifyEmbed: { type: OptionType.BOOLEAN, description: "Hide Discord's own Spotify embed (avoids two players)", default: true, onChange: updateStyle },
     spotifyHeight: { type: OptionType.NUMBER, description: "Spotify player height for tracks/episodes (px)", default: 152 },
 });
 
@@ -82,21 +94,30 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
         border: "none", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontSize: 12
     };
 
+    const spotifyFrame = (
+        <iframe
+            src={`https://open.spotify.com/embed/${type}/${id}?theme=0`}
+            width="100%" height={height}
+            style={{ border: 0, borderRadius: 12 }}
+            allow="encrypted-media; autoplay; clipboard-write"
+            loading="lazy"
+        />
+    );
+
     let player: React.ReactNode;
     if (mode === "spotify") {
-        player = (
-            <iframe
-                src={`https://open.spotify.com/embed/${type}/${id}?theme=0`}
-                width="100%" height={height}
-                style={{ border: 0, borderRadius: 12 }}
-                allow="encrypted-media; autoplay; clipboard-write"
-                loading="lazy"
-            />
-        );
+        player = spotifyFrame;
     } else if (match === undefined) {
         player = <div style={{ color: "var(--text-muted)" }}>Searching for full track…</div>;
     } else if (!match) {
-        player = <div style={{ color: "var(--text-danger)" }}>{Native ? "No YouTube match found." : "YouTube fallback needs the desktop app (Vesktop/Discord)."}</div>;
+        player = (
+            <>
+                <div style={{ color: "var(--text-danger)", fontSize: 12 }}>
+                    {Native ? "No YouTube match found, showing Spotify preview." : "YouTube fallback needs the desktop app (Vesktop/Discord), showing Spotify preview."}
+                </div>
+                {spotifyFrame}
+            </>
+        );
     } else {
         const src = match.videoId
             ? `https://www.youtube.com/embed/${match.videoId}`
@@ -106,7 +127,7 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
                 <iframe
                     src={src} width="100%" height={tall ? 315 : 200}
                     style={{ border: 0, borderRadius: 12 }}
-                    allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" loading="lazy"
                 />
                 {(match.title || match.artist) && (
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -123,7 +144,7 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
             <div style={{ display: "flex", gap: 6 }}>
                 {mode === "spotify"
                     ? <button style={btn} onClick={() => setMode("youtube")}>Play full track (YouTube)</button>
-                    : <button style={btn} onClick={() => setMode("spotify")}>Back to Spotify</button>}
+                    : <button style={btn} onClick={() => setMode("spotify")}>Spotify preview</button>}
             </div>
         </div>
     );
@@ -132,10 +153,11 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
 export default definePlugin({
     name: "EmbedFixer",
     description: "Rewrites TikTok/Twitter/Instagram/Reddit links to embed-friendly domains and adds a Spotify player (with full-track YouTube fallback)",
-    authors: [{ name: "fixer", id: 0n }],
+    authors: [{ name: "Fikser0", id: 411159664747872257n }],
     settings,
 
     start() {
+        updateStyle();
         addMessagePreSendListener(preSend);
         addMessageAccessory("EmbedFixerSpotify", props => {
             if (!settings.store.spotifyPlayer) return null;
@@ -146,6 +168,7 @@ export default definePlugin({
     },
 
     stop() {
+        document.getElementById(STYLE_ID)?.remove();
         removeMessagePreSendListener(preSend);
         removeMessageAccessory("EmbedFixerSpotify");
     },
