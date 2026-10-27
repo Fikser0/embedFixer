@@ -57,7 +57,7 @@ const preSend: MessageSendListener = (channelId, msg) => {
     msg.content = rewriteContent(msg.content, getOptions());
 };
 
-const Native = IS_DISCORD_DESKTOP || IS_VESKTOP
+const Native = !IS_WEB
     ? (VencordNative.pluginHelpers?.EmbedFixer as PluginNative<typeof import("./native")> | undefined)
     : undefined;
 
