@@ -7,21 +7,17 @@
 import { addMessageAccessory, removeMessageAccessory } from "@api/MessageAccessories";
 import { addMessagePreSendListener, MessageSendListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { definePluginSettings } from "@api/Settings";
+import { disableStyle, enableStyle } from "@api/Styles";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
 import { React, useEffect, useState } from "@webpack/common";
 
+import hideSpotifyStyle from "./hideSpotify.css?managed";
 import type { YoutubeMatch } from "./native";
 import { findSpotifyLinks, rewriteContent, RewriteOptions } from "./rewrite";
 
-const STYLE_ID = "vc-embedfixer-style";
-
 function updateStyle() {
-    document.getElementById(STYLE_ID)?.remove();
-    if (!settings.store.hideNativeSpotifyEmbed) return;
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = '[class*="embedSpotify"] { display: none !important; }';
-    document.head.appendChild(style);
+    if (settings.store.hideNativeSpotifyEmbed) enableStyle(hideSpotifyStyle);
+    else disableStyle(hideSpotifyStyle);
 }
 
 const settings = definePluginSettings({
@@ -171,7 +167,7 @@ export default definePlugin({
     },
 
     stop() {
-        document.getElementById(STYLE_ID)?.remove();
+        disableStyle(hideSpotifyStyle);
         removeMessagePreSendListener(preSend);
         removeMessageAccessory("EmbedFixerSpotify");
     },
