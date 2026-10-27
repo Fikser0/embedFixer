@@ -125,8 +125,8 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
         player = (
             <>
                 <iframe
-                    src={src} width="100%" height={tall ? 315 : 200}
-                    style={{ border: 0, borderRadius: 12 }}
+                    src={src} width="100%" height={tall ? 315 : 270}
+                    style={{ border: 0, borderRadius: 12, aspectRatio: "16 / 9" }}
                     allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" loading="lazy"
                 />
                 {(match.title || match.artist) && (

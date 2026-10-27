@@ -15,8 +15,9 @@ const FRAME_MARKER = "vc_embedfixer=1";
 const AD_SKIPPER = `(() => {
     if (window.__vcEfSkip) return;
     window.__vcEfSkip = true;
+    window.adguardInjected = true;
 
-    const AD_KEYS = ["adPlacements", "playerAds", "adSlots", "adBreakHeartbeatParams", "interstitialPods"];
+    const AD_KEYS = ["adPlacements", "playerAds", "adSlots", "adBreakHeartbeatParams", "interstitialPods", "playerCueRanges", "playerCueRangeSet"];
 
     const stripAds = (obj, seen = new WeakSet()) => {
         if (!obj || typeof obj !== "object" || seen.has(obj)) return obj;
@@ -57,9 +58,20 @@ const AD_SKIPPER = `(() => {
     };
 
     let mutedByUs = false;
+    let onesieDisabled = false;
     const SKIP = ".ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button[id^='skip-button']";
     const tick = () => {
         const player = document.querySelector(".html5-video-player");
+        if (player && !onesieDisabled && typeof player.forceExperimentFlagsForTesting === "function") {
+            try {
+                player.forceExperimentFlagsForTesting({
+                    html5_disable_onesie: "true",
+                    html5_onesie: "false",
+                    html5_onesie_wait_for_media_availability: "false"
+                });
+                onesieDisabled = true;
+            } catch { }
+        }
         const video = document.querySelector("video");
         if (!player || !video) return;
         const ad = player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting");
@@ -76,6 +88,7 @@ const AD_SKIPPER = `(() => {
             if (mutedByUs) { video.muted = false; mutedByUs = false; }
         }
     };
+    tick();
     setInterval(tick, 50);
     new MutationObserver(tick).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
 })();`;
@@ -84,7 +97,7 @@ const isOurEmbed = (url?: string) => Boolean(url && url.includes("youtube.com/em
 
 app.on("browser-window-created", (_, win) => {
     win.webContents.on("frame-created", (_, { frame }) => {
-        frame?.once("dom-ready", () => {
+        frame?.prependOnceListener("dom-ready", () => {
             if (!RendererSettings.store.plugins?.EmbedFixer?.enabled) return;
             if (isOurEmbed(frame.url)) {
                 frame.executeJavaScript(AD_SKIPPER).catch(() => { });
