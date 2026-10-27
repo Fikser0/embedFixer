@@ -9,7 +9,7 @@
 ```sh
 git clone https://github.com/Vendicated/Vencord && cd Vencord
 pnpm install --frozen-lockfile
-git clone <this repo> src/userplugins/embedFixer
+git clone https://github.com/Fikser0/embedFixer.git src/userplugins/embedFixer
 pnpm build
 ```
 Then inject (`pnpm inject`) or, for Vesktop, set Settings → Vencord Location to `Vencord/dist`. Enable **EmbedFixer** in Vencord plugin settings.

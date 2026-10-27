@@ -1,5 +1,6 @@
 /*
- * EmbedFixer, a Vencord plugin
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -9,8 +10,8 @@ import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
 import { React, useEffect, useState } from "@webpack/common";
 
-import { findSpotifyLinks, rewriteContent, RewriteOptions } from "./rewrite";
 import type { YoutubeMatch } from "./native";
+import { findSpotifyLinks, rewriteContent, RewriteOptions } from "./rewrite";
 
 const STYLE_ID = "vc-embedfixer-style";
 
@@ -154,6 +155,8 @@ export default definePlugin({
     name: "EmbedFixer",
     description: "Rewrites TikTok/Twitter/Instagram/Reddit links to embed-friendly domains and adds a Spotify player (with full-track YouTube fallback)",
     authors: [{ name: "Fikser0", id: 411159664747872257n }],
+    tags: ["Media", "Utility", "Chat"],
+    dependencies: ["MessageEventsAPI", "MessageAccessoriesAPI"],
     settings,
 
     start() {
