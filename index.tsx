@@ -120,8 +120,8 @@ function SpotifyPlayer({ type, id, url }: { type: string; id: string; url: strin
         );
     } else {
         const src = match.videoId
-            ? `https://www.youtube.com/embed/${match.videoId}`
-            : `https://www.youtube.com/embed/videoseries?list=${match.listId}`;
+            ? `https://www.youtube.com/embed/${match.videoId}?vc_embedfixer=1`
+            : `https://www.youtube.com/embed/videoseries?list=${match.listId}&vc_embedfixer=1`;
         player = (
             <>
                 <iframe

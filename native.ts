@@ -3,7 +3,48 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import type { IpcMainInvokeEvent } from "electron";
+import { RendererSettings } from "@main/settings";
+import { app, type IpcMainInvokeEvent } from "electron";
+
+/** Marker added to our YouTube embed urls so we only touch our own players */
+const FRAME_MARKER = "vc_embedfixer=1";
+
+// Instantly skips YouTube pre-roll ads in our embeds. Works alongside YoutubeAdblock,
+// whose skipper only runs on DOM mutations and often misses ads whose duration isn't loaded yet.
+const AD_SKIPPER = `(() => {
+    if (window.__vcEfSkip) return;
+    window.__vcEfSkip = true;
+    let mutedByUs = false;
+    const SKIP = ".ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button[id^='skip-button']";
+    const tick = () => {
+        const player = document.querySelector(".html5-video-player");
+        const video = document.querySelector("video");
+        if (!player || !video) return;
+        const ad = player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting");
+        if (ad) {
+            if (!video.muted) { video.muted = true; mutedByUs = true; }
+            video.playbackRate = 16;
+            if (isFinite(video.duration) && video.duration > 0) video.currentTime = video.duration;
+            document.querySelectorAll(SKIP).forEach(b => b.click());
+        } else {
+            if (video.playbackRate === 16) video.playbackRate = 1;
+            if (mutedByUs) { video.muted = false; mutedByUs = false; }
+        }
+    };
+    setInterval(tick, 100);
+    new MutationObserver(tick).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+})();`;
+
+app.on("browser-window-created", (_, win) => {
+    win.webContents.on("frame-created", (_, { frame }) => {
+        frame?.once("dom-ready", () => {
+            if (!RendererSettings.store.plugins?.EmbedFixer?.enabled) return;
+            if (frame.url.includes("youtube.com/embed/") && frame.url.includes(FRAME_MARKER)) {
+                frame.executeJavaScript(AD_SKIPPER).catch(() => { });
+            }
+        });
+    });
+});
 
 export interface YoutubeMatch {
     title?: string;
