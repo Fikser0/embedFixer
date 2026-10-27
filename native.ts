@@ -9,11 +9,53 @@ import { app, type IpcMainInvokeEvent } from "electron";
 /** Marker added to our YouTube embed urls so we only touch our own players */
 const FRAME_MARKER = "vc_embedfixer=1";
 
-// Instantly skips YouTube pre-roll ads in our embeds. Works alongside YoutubeAdblock,
-// whose skipper only runs on DOM mutations and often misses ads whose duration isn't loaded yet.
+// Strips YouTube ad metadata (including 2024+ adSlots & adBreakHeartbeatParams that
+// Vencord's built-in YoutubeAdblock misses and which cause a black screen while pre-roll
+// ad pods play) and keeps a fast-forward fallback skipper.
 const AD_SKIPPER = `(() => {
     if (window.__vcEfSkip) return;
     window.__vcEfSkip = true;
+
+    const AD_KEYS = ["adPlacements", "playerAds", "adSlots", "adBreakHeartbeatParams", "interstitialPods"];
+
+    const stripAds = (obj, seen = new WeakSet()) => {
+        if (!obj || typeof obj !== "object" || seen.has(obj)) return obj;
+        seen.add(obj);
+        for (const k of AD_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(obj, k)) delete obj[k];
+        }
+        for (const k in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                const v = obj[k];
+                if (v && typeof v === "object") stripAds(v, seen);
+            }
+        }
+        return obj;
+    };
+
+    for (const k of AD_KEYS) {
+        try {
+            Object.defineProperty(Object.prototype, k, {
+                configurable: true,
+                enumerable: false,
+                get() { return undefined; },
+                set() { }
+            });
+        } catch { }
+    }
+
+    const origParse = JSON.parse;
+    JSON.parse = function (...args) {
+        const res = origParse.apply(this, args);
+        return res && typeof res === "object" ? stripAds(res) : res;
+    };
+
+    const origJson = Response.prototype.json;
+    Response.prototype.json = async function (...args) {
+        const res = await origJson.apply(this, args);
+        return res && typeof res === "object" ? stripAds(res) : res;
+    };
+
     let mutedByUs = false;
     const SKIP = ".ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button[id^='skip-button']";
     const tick = () => {
@@ -26,21 +68,28 @@ const AD_SKIPPER = `(() => {
             video.playbackRate = 16;
             if (isFinite(video.duration) && video.duration > 0) video.currentTime = video.duration;
             document.querySelectorAll(SKIP).forEach(b => b.click());
+            if (typeof player.cancelPlayback === "function") {
+                try { player.cancelPlayback(); player.playVideo?.(); } catch { }
+            }
         } else {
             if (video.playbackRate === 16) video.playbackRate = 1;
             if (mutedByUs) { video.muted = false; mutedByUs = false; }
         }
     };
-    setInterval(tick, 100);
+    setInterval(tick, 50);
     new MutationObserver(tick).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
 })();`;
+
+const isOurEmbed = (url?: string) => Boolean(url && url.includes("youtube.com/embed/") && url.includes(FRAME_MARKER));
 
 app.on("browser-window-created", (_, win) => {
     win.webContents.on("frame-created", (_, { frame }) => {
         frame?.once("dom-ready", () => {
             if (!RendererSettings.store.plugins?.EmbedFixer?.enabled) return;
-            if (frame.url.includes("youtube.com/embed/") && frame.url.includes(FRAME_MARKER)) {
+            if (isOurEmbed(frame.url)) {
                 frame.executeJavaScript(AD_SKIPPER).catch(() => { });
+            } else if (isOurEmbed(frame.parent?.url)) {
+                frame.parent?.executeJavaScript(AD_SKIPPER).catch(() => { });
             }
         });
     });
